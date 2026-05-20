@@ -875,32 +875,101 @@ h1 {
   font-size: 0.75rem;
 }
 
-/* BACKUP & SYNC ACTIONS */
-.backup-actions {
+/* CLOUD SYNC CARD & ELEMENTS */
+.cloud-sync-inputs {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   width: 100%;
 }
 
-.btn-backup {
-  flex: 1;
+.token-input-wrapper {
+  width: 100% !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.token-input-wrapper input {
+  font-family: monospace;
+  font-size: 0.75rem !important;
+}
+
+.btn-toggle-visibility {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 0.75rem;
-  padding: 10px 12px;
+  transition: var(--transition-smooth);
 }
 
-.btn-icon {
+.btn-toggle-visibility:hover {
+  color: var(--text-primary);
+}
+
+.btn-save-token {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  font-size: 0.8rem;
+}
+
+.token-helper-link {
+  font-size: 0.75rem;
+  color: var(--color-cyan);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  transition: var(--transition-smooth);
+  margin-top: 2px;
+}
+
+.token-helper-link:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+.link-icon {
   flex-shrink: 0;
 }
 
-@media (max-width: 400px) {
-  .backup-actions {
-    flex-direction: column;
-    gap: 8px;
-  }
+/* Status Badges */
+.status-badge.connected {
+  background: rgba(0, 176, 155, 0.1);
+  border-color: rgba(0, 176, 155, 0.3);
+  color: var(--color-emerald);
+}
+
+.status-badge.syncing {
+  background: rgba(255, 179, 0, 0.1);
+  border-color: rgba(255, 179, 0, 0.3);
+  color: #ffb300;
+  animation: syncPulse 1s infinite alternate;
+}
+
+.status-badge.error {
+  background: rgba(255, 51, 102, 0.1);
+  border-color: rgba(255, 51, 102, 0.3);
+  color: var(--color-red);
+}
+
+@keyframes syncPulse {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+/* Status Dots */
+.status-dot.orange {
+  background-color: #ffb300;
+  box-shadow: 0 0 6px #ffb300;
 }
 
 /* RESPONSIVE DESIGN - MOBILE GYM VIEW */

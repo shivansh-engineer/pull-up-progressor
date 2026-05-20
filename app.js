@@ -422,6 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Save logged stats
   function saveLogs() {
     localStorage.setItem(LOCAL_STORAGE_LOGS, JSON.stringify(loggedStats));
+    triggerCloudSave();
   }
   
   // Notes auto-saving engine (Debounced on keystrokes)
@@ -435,6 +436,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const weekDate = program[currentWeekIndex].week;
       notesData[weekDate] = notesTextarea.value;
       localStorage.setItem(LOCAL_STORAGE_NOTES, JSON.stringify(notesData));
+      triggerCloudSave();
       
       notesSaveStatus.innerText = "Saved";
       notesSaveStatus.classList.remove("saving");
@@ -528,6 +530,8 @@ document.addEventListener("DOMContentLoaded", () => {
           // Re-initialize Active Week to first week
           currentWeekIndex = 0;
           localStorage.setItem(LOCAL_STORAGE_ACTIVE_WEEK, 0);
+          
+          triggerCloudSave();
           
           // Rerender layout
           renderWeekTabs();
@@ -772,109 +776,287 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
-  // 5.5 DATA SYNC & BACKUP ENGINE (Cross-Device Sync)
-  const btnExportBackup = document.getElementById("btn-export-backup");
-  const btnImportTrigger = document.getElementById("btn-import-trigger");
-  const backupFileInput = document.getElementById("backup-file-input");
-  const backupStatusIndicator = document.getElementById("backup-status-indicator");
-  const backupStatusDot = document.getElementById("backup-status-dot");
-  const backupStatusMsg = document.getElementById("backup-status-msg");
+  // 5.5 GITHUB GIST CLOUD SYNC ENGINE
+  const LOCAL_STORAGE_GITHUB_TOKEN = "shivansh_github_token";
+  const LOCAL_STORAGE_GIST_ID = "shivansh_gist_id";
+  const GIST_FILE_NAME = "pullup_progressor_sync.json";
 
-  // Helper to trigger JSON download
-  function exportBackup() {
+  const githubTokenInput = document.getElementById("github-token-input");
+  const btnToggleTokenVisibility = document.getElementById("btn-toggle-token-visibility");
+  const btnSaveToken = document.getElementById("btn-save-token");
+  const cloudSyncStatusBadge = document.getElementById("cloud-sync-status-badge");
+  const cloudStatusIndicator = document.getElementById("cloud-status-indicator");
+  const cloudStatusDot = document.getElementById("cloud-status-dot");
+  const cloudStatusMsg = document.getElementById("cloud-status-msg");
+
+  let githubToken = localStorage.getItem(LOCAL_STORAGE_GITHUB_TOKEN) || "";
+  let gistId = localStorage.getItem(LOCAL_STORAGE_GIST_ID) || "";
+  let cloudSyncTimeout = null;
+
+  // Initialize UI with saved token if available
+  if (githubToken && githubTokenInput) {
+    githubTokenInput.value = githubToken;
+  }
+
+  // Toggle Visibility of the Token Input
+  if (btnToggleTokenVisibility && githubTokenInput) {
+    btnToggleTokenVisibility.addEventListener("click", () => {
+      if (githubTokenInput.type === "password") {
+        githubTokenInput.type = "text";
+      } else {
+        githubTokenInput.type = "password";
+      }
+    });
+  }
+
+  // Connect/Save Token Action
+  if (btnSaveToken) {
+    btnSaveToken.addEventListener("click", () => {
+      const enteredToken = githubTokenInput.value.trim();
+      if (!enteredToken) {
+        // Disconnect
+        localStorage.removeItem(LOCAL_STORAGE_GITHUB_TOKEN);
+        localStorage.removeItem(LOCAL_STORAGE_GIST_ID);
+        githubToken = "";
+        gistId = "";
+        updateCloudStatusBadge("Disconnected", "disconnected");
+        showCloudStatus("Disconnected from cloud", false);
+        return;
+      }
+      
+      githubToken = enteredToken;
+      localStorage.setItem(LOCAL_STORAGE_GITHUB_TOKEN, githubToken);
+      showCloudStatus("Connecting to GitHub...", null);
+      updateCloudStatusBadge("Connecting...", "syncing");
+      
+      discoverOrCreateGist();
+    });
+  }
+
+  // Helper to update the top status badge
+  function updateCloudStatusBadge(text, className) {
+    if (!cloudSyncStatusBadge) return;
+    cloudSyncStatusBadge.innerText = text;
+    cloudSyncStatusBadge.className = `status-badge ${className}`;
+  }
+
+  // Helper to show status logs in the sync card
+  function showCloudStatus(msg, isSuccess) {
+    if (!cloudStatusIndicator) return;
+    cloudStatusIndicator.classList.remove("hidden");
+    
+    if (isSuccess === null) {
+      cloudStatusDot.className = "status-dot orange"; // Loading
+    } else if (isSuccess) {
+      cloudStatusDot.className = "status-dot green";  // Success
+    } else {
+      cloudStatusDot.className = "status-dot red";    // Error
+    }
+    cloudStatusMsg.innerText = msg;
+
+    // Auto-hide only if it's a static success/error state
+    if (isSuccess !== null) {
+      setTimeout(() => {
+        cloudStatusIndicator.classList.add("hidden");
+      }, 5000);
+    }
+  }
+
+  // Discover if a sync Gist exists or create a new private one
+  async function discoverOrCreateGist() {
+    if (!githubToken) return;
+
     try {
-      // Gather all local storage keys
-      const backupData = {
-        version: "shivansh_workout_v2_backup",
-        timestamp: new Date().toISOString(),
-        program: localStorage.getItem(LOCAL_STORAGE_PROGRAM),
-        logs: localStorage.getItem(LOCAL_STORAGE_LOGS),
-        notes: localStorage.getItem(LOCAL_STORAGE_NOTES),
-        activeWeek: localStorage.getItem(LOCAL_STORAGE_ACTIVE_WEEK),
-        activeDay: localStorage.getItem(LOCAL_STORAGE_ACTIVE_DAY)
+      // Fetch user's Gists
+      const response = await fetch("https://api.github.com/gists", {
+        headers: {
+          "Authorization": `token ${githubToken}`,
+          "Accept": "application/vnd.github.v3+json"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Invalid GitHub token or authentication failed.");
+      }
+
+      const gists = await response.json();
+      
+      // Look for our specific file in existing gists
+      let foundGist = gists.find(gist => gist.files && gist.files[GIST_FILE_NAME]);
+
+      if (foundGist) {
+        // Found existing Gist! Save ID and pull data
+        gistId = foundGist.id;
+        localStorage.setItem(LOCAL_STORAGE_GIST_ID, gistId);
+        showCloudStatus("Gist found! Pulling cloud logs...", null);
+        await pullCloudData();
+      } else {
+        // None found, create a new private Gist
+        showCloudStatus("Creating private Gist for sync...", null);
+        await createNewGist();
+      }
+    } catch (err) {
+      updateCloudStatusBadge("Sync Error", "error");
+      showCloudStatus(err.message, false);
+    }
+  }
+
+  // Create a new private Gist with initial local state
+  async function createNewGist() {
+    try {
+      const initialPayload = gatherLocalState();
+      
+      const payload = {
+        description: "Pull Up Progressor Sync File (Shivansh)",
+        public: false, // Private Gist
+        files: {
+          [GIST_FILE_NAME]: {
+            content: JSON.stringify(initialPayload, null, 2)
+          }
+        }
       };
 
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-      const downloadAnchor = document.createElement("a");
-      const dateStr = new Date().toISOString().split("T")[0];
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `pullup_backup_${dateStr}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
+      const response = await fetch("https://api.github.com/gists", {
+        method: "POST",
+        headers: {
+          "Authorization": `token ${githubToken}`,
+          "Accept": "application/vnd.github.v3+json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
 
-      showBackupStatus("Backup exported successfully!", true);
+      if (!response.ok) {
+        throw new Error("Failed to create Gist on GitHub.");
+      }
+
+      const createdGist = await response.json();
+      gistId = createdGist.id;
+      localStorage.setItem(LOCAL_STORAGE_GIST_ID, gistId);
+      
+      updateCloudStatusBadge("Connected", "connected");
+      showCloudStatus("Cloud connected & synchronized!", true);
     } catch (err) {
-      showBackupStatus("Export failed: " + err.message, false);
+      updateCloudStatusBadge("Sync Error", "error");
+      showCloudStatus(err.message, false);
     }
   }
 
-  // Handle file load for importing backup JSON
-  function handleBackupFile(file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        const parsed = JSON.parse(e.target.result);
-        
-        // Validation check
-        if (parsed.version !== "shivansh_workout_v2_backup") {
-          throw new Error("Invalid file format. Not a Pull Up Progressor backup.");
+  // Pull cloud data from the Gist and load into app
+  async function pullCloudData() {
+    if (!githubToken || !gistId) return;
+
+    try {
+      const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+        headers: {
+          "Authorization": `token ${githubToken}`,
+          "Accept": "application/vnd.github.v3+json"
         }
-        
-        // Restore keys
-        if (parsed.program) localStorage.setItem(LOCAL_STORAGE_PROGRAM, parsed.program);
-        if (parsed.logs) localStorage.setItem(LOCAL_STORAGE_LOGS, parsed.logs);
-        if (parsed.notes) localStorage.setItem(LOCAL_STORAGE_NOTES, parsed.notes);
-        if (parsed.activeWeek) localStorage.setItem(LOCAL_STORAGE_ACTIVE_WEEK, parsed.activeWeek);
-        if (parsed.activeDay) localStorage.setItem(LOCAL_STORAGE_ACTIVE_DAY, parsed.activeDay);
-        
-        // Re-initialize state
-        initData();
-        renderWeekTabs();
-        updateActiveWeekUI();
-        
-        showBackupStatus("Backup imported successfully!", true);
-      } catch (err) {
-        showBackupStatus("Import failed: " + err.message, false);
-      }
-    };
-    reader.readAsText(file);
-  }
+      });
 
-  function showBackupStatus(msg, isSuccess) {
-    backupStatusIndicator.classList.remove("hidden");
-    if (isSuccess) {
-      backupStatusDot.className = "status-dot green";
-      backupStatusMsg.innerText = msg;
-    } else {
-      backupStatusDot.className = "status-dot red";
-      backupStatusMsg.innerText = msg;
+      if (!response.ok) {
+        throw new Error("Failed to retrieve Gist data.");
+      }
+
+      const gist = await response.json();
+      const rawContent = gist.files[GIST_FILE_NAME]?.content;
+      
+      if (!rawContent) {
+        throw new Error("Gist sync file is empty.");
+      }
+
+      const cloudState = JSON.parse(rawContent);
+
+      // Restore states to localStorage
+      if (cloudState.program) localStorage.setItem(LOCAL_STORAGE_PROGRAM, cloudState.program);
+      if (cloudState.logs) localStorage.setItem(LOCAL_STORAGE_LOGS, cloudState.logs);
+      if (cloudState.notes) localStorage.setItem(LOCAL_STORAGE_NOTES, cloudState.notes);
+      if (cloudState.activeWeek) localStorage.setItem(LOCAL_STORAGE_ACTIVE_WEEK, cloudState.activeWeek);
+      if (cloudState.activeDay) localStorage.setItem(LOCAL_STORAGE_ACTIVE_DAY, cloudState.activeDay);
+
+      // Re-initialize local runtime states
+      initData();
+      renderWeekTabs();
+      updateActiveWeekUI();
+
+      updateCloudStatusBadge("Connected", "connected");
+      showCloudStatus("Progress synced from Cloud!", true);
+    } catch (err) {
+      updateCloudStatusBadge("Sync Error", "error");
+      showCloudStatus("Failed to sync from cloud: " + err.message, false);
     }
-    
-    // Auto-hide status after 5 seconds
-    setTimeout(() => {
-      backupStatusIndicator.classList.add("hidden");
-    }, 5000);
   }
 
-  // Attach Backup & Restore event listeners
-  if (btnExportBackup) {
-    btnExportBackup.addEventListener("click", exportBackup);
+  // Gathers current localStorage tracking states
+  function gatherLocalState() {
+    return {
+      version: "shivansh_workout_v2_backup",
+      timestamp: new Date().toISOString(),
+      program: localStorage.getItem(LOCAL_STORAGE_PROGRAM),
+      logs: localStorage.getItem(LOCAL_STORAGE_LOGS),
+      notes: localStorage.getItem(LOCAL_STORAGE_NOTES),
+      activeWeek: localStorage.getItem(LOCAL_STORAGE_ACTIVE_WEEK),
+      activeDay: localStorage.getItem(LOCAL_STORAGE_ACTIVE_DAY)
+    };
   }
-  
-  if (btnImportTrigger) {
-    btnImportTrigger.addEventListener("click", () => {
-      backupFileInput.click();
-    });
-  }
-  
-  if (backupFileInput) {
-    backupFileInput.addEventListener("change", (e) => {
-      const files = backupFileInput.files;
-      if (files.length > 0) {
-        handleBackupFile(files[0]);
+
+  // Pushes current state up to Gist (Background Sync)
+  async function pushCloudData() {
+    if (!githubToken || !gistId) return;
+
+    try {
+      const activePayload = gatherLocalState();
+      
+      const payload = {
+        files: {
+          [GIST_FILE_NAME]: {
+            content: JSON.stringify(activePayload, null, 2)
+          }
+        }
+      };
+
+      const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+        method: "PATCH",
+        headers: {
+          "Authorization": `token ${githubToken}`,
+          "Accept": "application/vnd.github.v3+json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error("Network save failed.");
       }
-    });
+
+      updateCloudStatusBadge("Connected", "connected");
+      showCloudStatus("Cloud auto-saved!", true);
+    } catch (err) {
+      updateCloudStatusBadge("Sync Error", "error");
+      showCloudStatus("Cloud auto-save failed: " + err.message, false);
+    }
+  }
+
+  // Debounced cloud saving trigger
+  function triggerCloudSave() {
+    if (!githubToken || !gistId) return; // Silent if offline
+
+    updateCloudStatusBadge("Saving...", "syncing");
+    
+    clearTimeout(cloudSyncTimeout);
+    cloudSyncTimeout = setTimeout(() => {
+      pushCloudData();
+    }, 1200); // 1.2s debounce to aggregate quick checkoff taps
+  }
+
+  // Auto-connect on page boot if token is already stored
+  if (githubToken) {
+    updateCloudStatusBadge("Syncing...", "syncing");
+    if (gistId) {
+      pullCloudData();
+    } else {
+      discoverOrCreateGist();
+    }
   }
 
   // 6. INITIALIZATION TRIGGER
