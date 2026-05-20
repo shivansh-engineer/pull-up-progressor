@@ -1,5 +1,36 @@
-// State Management and Interactive Logic for Pull Up Progressor
 document.addEventListener("DOMContentLoaded", () => {
+  
+  // Safe shadowed localStorage wrapper for private/incognito browsing modes
+  const localStorage = {
+    getItem(key) {
+      try {
+        return window.localStorage.getItem(key);
+      } catch (e) {
+        return null;
+      }
+    },
+    setItem(key, value) {
+      try {
+        window.localStorage.setItem(key, value);
+      } catch (e) {
+        // Fail silently in private/incognito modes
+      }
+    },
+    removeItem(key) {
+      try {
+        window.localStorage.removeItem(key);
+      } catch (e) {
+        // Fail silently in private/incognito modes
+      }
+    },
+    clear() {
+      try {
+        window.localStorage.clear();
+      } catch (e) {
+        // Fail silently in private/incognito modes
+      }
+    }
+  };
   
   // 1. STATE INITIALIZATION
   let program = [];
