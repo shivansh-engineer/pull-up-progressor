@@ -20,9 +20,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const savedLogs = localStorage.getItem(LOCAL_STORAGE_LOGS);
     const savedNotes = localStorage.getItem(LOCAL_STORAGE_NOTES);
     
-    if (savedProgram) {
+    if (savedProgram && savedProgram !== "null" && savedProgram !== "undefined") {
       try {
         program = JSON.parse(savedProgram);
+        if (!Array.isArray(program) || program.length === 0) {
+          program = [...defaultProgram];
+        }
       } catch (e) {
         program = [...defaultProgram];
       }
@@ -31,9 +34,12 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.setItem(LOCAL_STORAGE_PROGRAM, JSON.stringify(program));
     }
     
-    if (savedLogs) {
+    if (savedLogs && savedLogs !== "null" && savedLogs !== "undefined") {
       try {
         loggedStats = JSON.parse(savedLogs);
+        if (typeof loggedStats !== "object" || loggedStats === null) {
+          loggedStats = {};
+        }
       } catch (e) {
         loggedStats = {};
       }
@@ -41,9 +47,12 @@ document.addEventListener("DOMContentLoaded", () => {
       loggedStats = {};
     }
     
-    if (savedNotes) {
+    if (savedNotes && savedNotes !== "null" && savedNotes !== "undefined") {
       try {
         notesData = JSON.parse(savedNotes);
+        if (typeof notesData !== "object" || notesData === null) {
+          notesData = {};
+        }
       } catch (e) {
         notesData = {};
       }
@@ -53,9 +62,9 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Auto-select week based on date (May 20, 2026 falls in Week 1: 5/18/2026)
     const savedActiveWeek = localStorage.getItem(LOCAL_STORAGE_ACTIVE_WEEK);
-    if (savedActiveWeek !== null) {
+    if (savedActiveWeek !== null && savedActiveWeek !== "null" && savedActiveWeek !== "undefined") {
       currentWeekIndex = parseInt(savedActiveWeek);
-      if (currentWeekIndex < 0 || currentWeekIndex >= program.length) {
+      if (isNaN(currentWeekIndex) || currentWeekIndex < 0 || !program || currentWeekIndex >= program.length) {
         currentWeekIndex = 0;
       }
     } else {
@@ -63,7 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     const savedActiveDay = localStorage.getItem(LOCAL_STORAGE_ACTIVE_DAY);
-    if (savedActiveDay) {
+    if (savedActiveDay && savedActiveDay !== "null" && savedActiveDay !== "undefined") {
       activeDay = savedActiveDay;
     } else {
       activeDay = "Day 1";
@@ -74,6 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function determineCurrentWeek() {
     // Current local time: 2026-05-20 (May 20, 2026)
     const today = new Date("2026-05-20");
+    if (!program || !Array.isArray(program)) return 0;
     
     for (let i = 0; i < program.length; i++) {
       const weekDateStr = program[i].week;
@@ -967,12 +977,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const cloudState = JSON.parse(rawContent);
 
-      // Restore states to localStorage
-      if (cloudState.program) localStorage.setItem(LOCAL_STORAGE_PROGRAM, cloudState.program);
-      if (cloudState.logs) localStorage.setItem(LOCAL_STORAGE_LOGS, cloudState.logs);
-      if (cloudState.notes) localStorage.setItem(LOCAL_STORAGE_NOTES, cloudState.notes);
-      if (cloudState.activeWeek) localStorage.setItem(LOCAL_STORAGE_ACTIVE_WEEK, cloudState.activeWeek);
-      if (cloudState.activeDay) localStorage.setItem(LOCAL_STORAGE_ACTIVE_DAY, cloudState.activeDay);
+      // Restore states to localStorage with safety checks
+      if (cloudState.program && cloudState.program !== "null" && cloudState.program !== "undefined") {
+        localStorage.setItem(LOCAL_STORAGE_PROGRAM, cloudState.program);
+      }
+      if (cloudState.logs && cloudState.logs !== "null" && cloudState.logs !== "undefined") {
+        localStorage.setItem(LOCAL_STORAGE_LOGS, cloudState.logs);
+      }
+      if (cloudState.notes && cloudState.notes !== "null" && cloudState.notes !== "undefined") {
+        localStorage.setItem(LOCAL_STORAGE_NOTES, cloudState.notes);
+      }
+      if (cloudState.activeWeek !== undefined && cloudState.activeWeek !== null && cloudState.activeWeek !== "null" && cloudState.activeWeek !== "undefined") {
+        localStorage.setItem(LOCAL_STORAGE_ACTIVE_WEEK, cloudState.activeWeek);
+      }
+      if (cloudState.activeDay && cloudState.activeDay !== "null" && cloudState.activeDay !== "undefined") {
+        localStorage.setItem(LOCAL_STORAGE_ACTIVE_DAY, cloudState.activeDay);
+      }
 
       // Re-initialize local runtime states
       initData();
