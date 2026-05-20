@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pull Up Progressor — Shivansh's Custom Training Hub</title>
+  
+  <!-- Font Imports -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- PapaParse CDN for robust CSV parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" integrity="sha512-V9gCI5sbN5Z1C9oBIF97D2q0d8yC14c4A8Dk1/aZc3mO4z2G57b8q8vH4l8l32q/fFv51P45s4U/rZ5415Y1Vw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="header-main">
+        <div class="title-area">
+          <div class="logo-badge">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+              <path fill="currentColor" d="M20.57 14.86L22 13.43L20.57 12L17 15.57L8.43 7L12 3.43L10.57 2L9.14 3.43L7.71 2L6.29 3.43L4.86 2L3.43 3.43L2 2v20h2v-2h16v2h2v-7.14M4 18v-4h2v4H4m4 0v-6h2v6H8m4 0v-8h2v8h-2m4 0v-4h2v4h-2z"/>
+            </svg>
+          </div>
+          <div>
+            <h1>PULL UP PROGRESSOR</h1>
+            <p class="subheading">Shivansh's Custom Training Hub</p>
+          </div>
+        </div>
+        
+        <!-- Overall Progress Ring -->
+        <div class="progress-ring-container">
+          <div class="progress-info">
+            <span class="progress-percentage" id="overall-percentage">0%</span>
+            <span class="progress-label">Completed</span>
+          </div>
+          <svg class="progress-ring" width="80" height="80">
+            <circle class="progress-ring-bg" cx="40" cy="40" r="34"></circle>
+            <circle class="progress-ring-circle" id="overall-progress-circle" cx="40" cy="40" r="34"></circle>
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <!-- WEEK SELECTOR -->
+    <section class="week-selector-container">
+      <div class="week-timeline-header">
+        <h2>Select Active Week</h2>
+        <span class="current-date-badge" id="current-date-display">Today: May 20, 2026</span>
+      </div>
+      <div class="week-selector" id="week-tabs">
+        <!-- Generated dynamically via JS -->
+      </div>
+    </section>
+
+    <!-- MAIN INTERACTIVE HUB -->
+    <main class="dashboard-grid">
+      
+      <!-- LEFT COLUMN: GYM LOG -->
+      <section class="dashboard-card main-log-card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <h2 id="selected-week-title">Week 1 (5/18/2026)</h2>
+            <p class="week-goal" id="selected-week-goal">Goal: Build familiarity with the pull up...</p>
+          </div>
+        </div>
+        
+        <!-- Day Selector Tabs -->
+        <div class="day-selector-tabs" id="day-tabs">
+          <button class="day-tab active" data-day="Day 1">Day 1</button>
+          <button class="day-tab" data-day="Day 2">Day 2</button>
+          <button class="day-tab" data-day="Day 3">Day 3</button>
+        </div>
+        
+        <!-- Workout Content -->
+        <div class="workout-content" id="workout-content-area">
+          <!-- Dynamically populated Exercise Cards go here -->
+        </div>
+        
+        <div class="empty-state-workout hidden" id="empty-state-view">
+          <div class="empty-icon">✓</div>
+          <h3>Check In & Retest Week</h3>
+          <p>This week is dedicated to resting, logging measurements, or performing a physical check-in. Refer to notes on the right panel.</p>
+        </div>
+      </section>
+      
+      <!-- RIGHT COLUMN: NOTES & CSV SYNC -->
+      <aside class="sidebar-column">
+        
+        <!-- NOTES CARD -->
+        <section class="dashboard-card notes-card">
+          <div class="card-header sidebar-header">
+            <h3>Shivansh's Notes</h3>
+            <span class="status-badge" id="notes-save-status">Saved</span>
+          </div>
+          <div class="card-body">
+            <p class="notes-hint">Add some notes about how things felt, weight/band progression, etc. This is saved automatically.</p>
+            <textarea id="week-notes-textarea" placeholder="Type notes here... (e.g. Band color used, fatigue levels, rows weight increases)"></textarea>
+          </div>
+        </section>
+        
+        <!-- DATA SYNC & BACKUP CARD -->
+        <section class="dashboard-card sync-card backup-card">
+          <div class="card-header sidebar-header">
+            <h3>Cross-Device Sync</h3>
+          </div>
+          <div class="card-body">
+            <p class="sync-desc">Switching between laptop and phone? Export your progress JSON from one device and import it on the other!</p>
+            
+            <div class="backup-actions">
+              <button class="btn btn-primary btn-backup" id="btn-export-backup">
+                <svg viewBox="0 0 24 24" width="18" height="18" class="btn-icon">
+                  <path fill="currentColor" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/>
+                </svg>
+                Export Backup
+              </button>
+              
+              <button class="btn btn-secondary btn-backup" id="btn-import-trigger">
+                <svg viewBox="0 0 24 24" width="18" height="18" class="btn-icon">
+                  <path fill="currentColor" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                </svg>
+                Import Backup
+              </button>
+              <input type="file" id="backup-file-input" accept=".json" class="hidden">
+            </div>
+            
+            <div class="sync-status hidden" id="backup-status-indicator">
+              <span class="status-dot green" id="backup-status-dot"></span>
+              <span class="status-text" id="backup-status-msg">Backup loaded successfully!</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- CSV SYNC / SPREADSHEET CARD -->
+        <section class="dashboard-card sync-card">
+          <div class="card-header sidebar-header">
+            <h3>Sync Spreadsheet</h3>
+          </div>
+          <div class="card-body">
+            <p class="sync-desc">Adding new weeks or updating routines? Export your spreadsheet as a <strong>CSV</strong> and drop it below to instantly sync the schedules!</p>
+            
+            <div class="drag-drop-zone" id="csv-drop-zone">
+              <svg viewBox="0 0 24 24" width="36" height="36" class="upload-icon">
+                <path fill="currentColor" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+              </svg>
+              <p class="drag-text">Drag & Drop CSV here</p>
+              <span class="or-separator">or</span>
+              <button class="btn btn-secondary" onclick="document.getElementById('csv-file-input').click()">Browse Files</button>
+              <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+            </div>
+            
+            <div class="sync-status hidden" id="upload-status-indicator">
+              <span class="status-dot green"></span>
+              <span class="status-text" id="upload-status-msg">Spreadsheet successfully synced!</span>
+            </div>
+          </div>
+        </section>
+        
+      </aside>
+
+    </main>
+    
+    <!-- Footer -->
+    <footer class="app-footer-credits">
+      <p>Designed custom-tailored for Shivansh. Supports automatic dark persistence.</p>
+      <button class="btn-reset" id="btn-reset-data">Reset Program Data</button>
+    </footer>
+
+  </div>
+
+  <!-- Javascript Modules -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
