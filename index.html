@@ -3,6 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    window.onerror = function(message, source, lineno, colno, error) {
+      const div = document.createElement('div');
+      div.id = 'onscreen-debugger-error';
+      div.style.position = 'fixed';
+      div.style.top = '0';
+      div.style.left = '0';
+      div.style.width = '100%';
+      div.style.height = '100%';
+      div.style.background = 'rgba(20, 0, 0, 0.98)';
+      div.style.color = '#ff6b6b';
+      div.style.padding = '40px';
+      div.style.boxSizing = 'border-box';
+      div.style.zIndex = '999999';
+      div.style.fontFamily = 'monospace';
+      div.style.fontSize = '14px';
+      div.style.lineHeight = '1.6';
+      div.style.overflow = 'auto';
+      div.style.whiteSpace = 'pre-wrap';
+      div.innerHTML = '<h2 style="color:#ff4757;margin-top:0;">🛑 Page Runtime Error Encountered</h2>' +
+                      '<p><b>Error Details:</b> ' + message + '</p>' +
+                      '<p><b>Source File:</b> ' + source + '</p>' +
+                      '<p><b>Line Number:</b> ' + lineno + ' | <b>Column:</b> ' + colno + '</p>' +
+                      '<hr style="border:1px solid #ff4757;margin:20px 0;">' +
+                      '<p><b>Full Stack Trace:</b></p>' +
+                      '<pre style="background:#2f3542;color:#ffffff;padding:15px;border-radius:6px;overflow:auto;">' + (error ? error.stack : 'N/A') + '</pre>';
+      
+      // Wait for body to exist to append it
+      if (document.body) {
+        document.body.appendChild(div);
+      } else {
+        window.addEventListener('DOMContentLoaded', () => document.body.appendChild(div));
+      }
+      return false;
+    };
+    window.onunhandledrejection = function(event) {
+      const div = document.createElement('div');
+      div.id = 'onscreen-debugger-rejection';
+      div.style.position = 'fixed';
+      div.style.top = '0';
+      div.style.left = '0';
+      div.style.width = '100%';
+      div.style.height = '100%';
+      div.style.background = 'rgba(20, 0, 0, 0.98)';
+      div.style.color = '#ff9f43';
+      div.style.padding = '40px';
+      div.style.boxSizing = 'border-box';
+      div.style.zIndex = '999999';
+      div.style.fontFamily = 'monospace';
+      div.style.fontSize = '14px';
+      div.style.lineHeight = '1.6';
+      div.style.overflow = 'auto';
+      div.style.whiteSpace = 'pre-wrap';
+      div.innerHTML = '<h2 style="color:#ff9f43;margin-top:0;">⚠️ Unhandled Promise Rejection</h2>' +
+                      '<p><b>Reason:</b> ' + event.reason + '</p>' +
+                      '<hr style="border:1px solid #ff9f43;margin:20px 0;">' +
+                      '<p><b>Full Stack Trace:</b></p>' +
+                      '<pre style="background:#2f3542;color:#ffffff;padding:15px;border-radius:6px;overflow:auto;">' + (event.reason && event.reason.stack ? event.reason.stack : 'N/A') + '</pre>';
+      if (document.body) {
+        document.body.appendChild(div);
+      } else {
+        window.addEventListener('DOMContentLoaded', () => document.body.appendChild(div));
+      }
+    };
+  </script>
   <title>Pull Up Progressor — Shivansh's Custom Training Hub</title>
   
   <!-- Font Imports -->
@@ -11,7 +76,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="styles.css?v=2.3">
+  <link rel="stylesheet" href="styles.css?v=2.5">
   
   <!-- PapaParse CDN for robust CSV parsing -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" integrity="sha512-V9gCI5sbN5Z1C9oBIF97D2q0d8yC14c4A8Dk1/aZc3mO4z2G57b8q8vH4l8l32q/fFv51P45s4U/rZ5415Y1Vw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -179,7 +244,7 @@
   </div>
 
   <!-- Javascript Modules -->
-  <script src="data.js?v=2.3"></script>
-  <script src="app.js?v=2.3"></script>
+  <script src="data.js?v=2.5"></script>
+  <script src="app.js?v=2.5"></script>
 </body>
 </html>
