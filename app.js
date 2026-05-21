@@ -1,36 +1,59 @@
 document.addEventListener("DOMContentLoaded", () => {
   
-  // Safe shadowed localStorage wrapper for private/incognito browsing modes
-  const localStorage = {
-    getItem(key) {
-      try {
-        return window.localStorage.getItem(key);
-      } catch (e) {
-        return null;
-      }
-    },
-    setItem(key, value) {
-      try {
-        window.localStorage.setItem(key, value);
-      } catch (e) {
-        // Fail silently in private/incognito modes
-      }
-    },
-    removeItem(key) {
-      try {
-        window.localStorage.removeItem(key);
-      } catch (e) {
-        // Fail silently in private/incognito modes
-      }
-    },
-    clear() {
-      try {
-        window.localStorage.clear();
-      } catch (e) {
-        // Fail silently in private/incognito modes
-      }
+  // Safe shadowed localStorage wrapper with In-Memory fallback for private/incognito modes
+  const localStorage = (() => {
+    let isSupported = false;
+    try {
+      const testKey = "__storage_test__";
+      window.localStorage.setItem(testKey, testKey);
+      window.localStorage.removeItem(testKey);
+      isSupported = true;
+    } catch (e) {
+      isSupported = false;
     }
-  };
+
+    const inMemoryStorage = {};
+
+    return {
+      getItem(key) {
+        if (isSupported) {
+          try {
+            return window.localStorage.getItem(key);
+          } catch (e) {}
+        }
+        return inMemoryStorage.hasOwnProperty(key) ? inMemoryStorage[key] : null;
+      },
+      setItem(key, value) {
+        if (isSupported) {
+          try {
+            window.localStorage.setItem(key, value);
+            return;
+          } catch (e) {}
+        }
+        inMemoryStorage[key] = String(value);
+      },
+      removeItem(key) {
+        if (isSupported) {
+          try {
+            window.localStorage.removeItem(key);
+            return;
+          } catch (e) {}
+        }
+        delete inMemoryStorage[key];
+      },
+      clear() {
+        if (isSupported) {
+          try {
+            window.localStorage.clear();
+            return;
+          } catch (e) {}
+        }
+        for (const key in inMemoryStorage) {
+          delete inMemoryStorage[key];
+        }
+      }
+    };
+  })();
   
   // 1. STATE INITIALIZATION
   let program = [];
