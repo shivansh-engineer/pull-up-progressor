@@ -1110,6 +1110,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Focus-Activated Auto-Sync: automatically pull latest changes when tab gains focus or phone unlocks
+  let lastFocusPullTime = Date.now();
+  function triggerFocusPull() {
+    if (!githubToken || !gistId) return;
+    
+    // Throttle pulls to once every 10 seconds to conserve battery and GitHub API rate limits
+    if (Date.now() - lastFocusPullTime < 10000) return;
+    lastFocusPullTime = Date.now();
+    
+    updateCloudStatusBadge("Syncing...", "syncing");
+    pullCloudData();
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      triggerFocusPull();
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    triggerFocusPull();
+  });
+
   // 6. INITIALIZATION TRIGGER
   initData();
   renderWeekTabs();
