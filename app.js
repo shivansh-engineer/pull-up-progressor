@@ -242,19 +242,59 @@ document.addEventListener("DOMContentLoaded", () => {
     selectedWeekTitle.innerText = `Week ${currentWeekIndex + 1} (${currentWeekData.week})`;
     selectedWeekGoal.innerText = `Goal: ${currentWeekData.goal || 'No goal set'}`;
     
-    // 2. Load custom notes for this week
-    const savedNotes = notesData[currentWeekData.week];
-    if (savedNotes !== undefined) {
-      notesTextarea.value = savedNotes;
-    } else {
-      notesTextarea.value = currentWeekData.notes || "";
-    }
+    // 2. Load custom notes for the active week and day
+    loadNotesForActiveDay();
     
     // 3. Render the workout day logging view
     renderWorkoutDay();
     
     // 4. Update overall metrics
     updateOverallProgress();
+  }
+
+  // Load custom notes for the active week and day
+  function loadNotesForActiveDay() {
+    if (!notesTextarea) return;
+    const currentWeekData = program[currentWeekIndex];
+    if (!currentWeekData) return;
+    const weekDate = currentWeekData.week;
+    
+    let savedWeekNotes = notesData[weekDate];
+    
+    // Migration: If saved notes are a flat string (old format), migrate to day-by-day object format
+    if (typeof savedWeekNotes === "string") {
+      savedWeekNotes = {
+        "Day 1": savedWeekNotes,
+        "Day 2": "",
+        "Day 3": ""
+      };
+      notesData[weekDate] = savedWeekNotes;
+      localStorage.setItem(LOCAL_STORAGE_NOTES, JSON.stringify(notesData));
+    }
+    
+    // Ensure structure is initialized
+    if (!savedWeekNotes) {
+      savedWeekNotes = {
+        "Day 1": currentWeekData.notes || "",
+        "Day 2": "",
+        "Day 3": ""
+      };
+      notesData[weekDate] = savedWeekNotes;
+    }
+    
+    const dayNotes = savedWeekNotes[activeDay] !== undefined ? savedWeekNotes[activeDay] : "";
+    notesTextarea.value = dayNotes;
+    
+    // Update notes section header dynamically to show which day notes belong to
+    const notesTitle = document.querySelector(".notes-card h3");
+    if (notesTitle) {
+      notesTitle.innerText = `Notes — ${activeDay}`;
+    }
+    
+    const notesHint = document.querySelector(".notes-hint");
+    if (notesHint) {
+      notesHint.innerText = `Add notes specific to your ${activeDay} session (color bands, weights, etc). Saved automatically.`;
+    }
   }
   
   // Render Workout for the active Day (Day 1 / 2 / 3)
@@ -498,7 +538,18 @@ document.addEventListener("DOMContentLoaded", () => {
     clearTimeout(notesSaveTimeout);
     notesSaveTimeout = setTimeout(() => {
       const weekDate = program[currentWeekIndex].week;
-      notesData[weekDate] = notesTextarea.value;
+      
+      // Ensure notesData[weekDate] is initialized as an object
+      if (typeof notesData[weekDate] !== "object" || notesData[weekDate] === null) {
+        const oldVal = typeof notesData[weekDate] === "string" ? notesData[weekDate] : "";
+        notesData[weekDate] = {
+          "Day 1": oldVal,
+          "Day 2": "",
+          "Day 3": ""
+        };
+      }
+      
+      notesData[weekDate][activeDay] = notesTextarea.value;
       localStorage.setItem(LOCAL_STORAGE_NOTES, JSON.stringify(notesData));
       triggerCloudSave();
       
@@ -517,6 +568,7 @@ document.addEventListener("DOMContentLoaded", () => {
       localStorage.setItem(LOCAL_STORAGE_ACTIVE_DAY, activeDay);
       
       renderWorkoutDay();
+      loadNotesForActiveDay(); // Load notes for the newly selected day!
     });
   });
   
@@ -852,6 +904,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const cloudStatusIndicator = document.getElementById("cloud-status-indicator");
   const cloudStatusDot = document.getElementById("cloud-status-dot");
   const cloudStatusMsg = document.getElementById("cloud-status-msg");
+
+  // URL Query Token Capture (allows easy bookmarks in private/incognito modes with zero copy-pasting!)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlToken = urlParams.get("token");
+  if (urlToken && urlToken.trim().startsWith("ghp_")) {
+    localStorage.setItem(LOCAL_STORAGE_GITHUB_TOKEN, urlToken.trim());
+  }
 
   let githubToken = localStorage.getItem(LOCAL_STORAGE_GITHUB_TOKEN) || "";
   let gistId = localStorage.getItem(LOCAL_STORAGE_GIST_ID) || "";
