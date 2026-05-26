@@ -359,6 +359,21 @@ h1 {
   line-height: 1.4;
 }
 
+.week-nutrition {
+  font-size: 0.82rem;
+  color: var(--color-cyan);
+  margin-top: 8px;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 242, 254, 0.04);
+  border: 1px dashed rgba(0, 242, 254, 0.2);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: var(--font-display);
+}
+
 /* Day Tabs */
 .day-selector-tabs {
   display: flex;

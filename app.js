@@ -159,6 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const dayTabs = document.querySelectorAll(".day-tab");
   const selectedWeekTitle = document.getElementById("selected-week-title");
   const selectedWeekGoal = document.getElementById("selected-week-goal");
+  const selectedWeekNutrition = document.getElementById("selected-week-nutrition");
   const workoutContentArea = document.getElementById("workout-content-area");
   const emptyStateView = document.getElementById("empty-state-view");
   const notesTextarea = document.getElementById("week-notes-textarea");
@@ -241,6 +242,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const currentWeekData = program[currentWeekIndex];
     selectedWeekTitle.innerText = `Week ${currentWeekIndex + 1} (${currentWeekData.week})`;
     selectedWeekGoal.innerText = `Goal: ${currentWeekData.goal || 'No goal set'}`;
+    
+    if (selectedWeekNutrition) {
+      if (currentWeekData.nutrition) {
+        selectedWeekNutrition.style.display = "flex";
+        selectedWeekNutrition.innerHTML = `🍏 <strong>Nutrition Goal:</strong> ${currentWeekData.nutrition}`;
+      } else {
+        selectedWeekNutrition.style.display = "none";
+      }
+    }
     
     // 2. Load custom notes for the active week and day
     loadNotesForActiveDay();
@@ -718,6 +728,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     const rows = parsedResult.data;
     const newProgram = [];
+    let weekCounter = 0;
     
     for (let i = 0; i < rows.length; i++) {
       const firstCell = rows[i][0] ? rows[i][0].toString().trim() : "";
@@ -729,9 +740,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const weekObj = {
           week: weekDate,
           goal: "",
+          nutrition: "",
           workouts: { "Day 1": [], "Day 2": [], "Day 3": [] },
           notes: ""
         };
+        
+        const currentWeekIndex = weekCounter;
+        weekCounter++;
         
         // Scan next rows to populate this week
         let j = i + 1;
@@ -751,11 +766,13 @@ document.addEventListener("DOMContentLoaded", () => {
             for (let dayIdx = 0; dayIdx < 3; dayIdx++) {
               const workoutText = rows[j][dayIdx + 2];
               if (workoutText) {
-                weekObj.workouts[days[dayIdx]] = parseWorkoutCellText(workoutText, weekDate, days[dayIdx]);
+                weekObj.workouts[days[dayIdx]] = parseWorkoutCellText(workoutText, weekDate, days[dayIdx], currentWeekIndex);
               }
             }
           } else if (nextFirstCell.toLowerCase().includes("notes")) {
             weekObj.notes = rows[j][2] ? rows[j][2].toString().trim() : "";
+          } else if (nextFirstCell.toLowerCase().includes("nutrition")) {
+            weekObj.nutrition = rows[j][1] ? rows[j][1].toString().trim() : "";
           }
           
           j++;
@@ -770,7 +787,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   
   // Parses a workout string (e.g. Day 1: "A: Bent Row... \n\n B: Pull Up...") into separate exercise objects
-  function parseWorkoutCellText(cellText, weekDate, dayName) {
+  function parseWorkoutCellText(cellText, weekDate, dayName, weekIndex) {
     const exercises = [];
     if (!cellText) return exercises;
     
@@ -795,15 +812,15 @@ document.addEventListener("DOMContentLoaded", () => {
       bText = parts[1] ? parts[1].trim() : "";
     }
     
-    // Unique base ID for exercises
-    const weekClean = weekDate.replace(/\//g, "");
-    const dayClean = dayName.replace(/\s+/g, "").toLowerCase();
+    // Unique compatible base ID for exercises (e.g., w1d1a)
+    const weekNum = weekIndex + 1;
+    const dayNum = dayName.replace("Day ", "");
     
     if (aText) {
-      exercises.push(interpretWorkoutSentence(aText, "A", `${weekClean}_${dayClean}_a`));
+      exercises.push(interpretWorkoutSentence(aText, "A", `w${weekNum}d${dayNum}a`));
     }
     if (bText) {
-      exercises.push(interpretWorkoutSentence(bText, "B", `${weekClean}_${dayClean}_b`));
+      exercises.push(interpretWorkoutSentence(bText, "B", `w${weekNum}d${dayNum}b`));
     }
     
     return exercises;
